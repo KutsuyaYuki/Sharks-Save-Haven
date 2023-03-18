@@ -44,4 +44,22 @@ impl Filesystem {
 
         Ok(())
     }
+
+    pub fn delete_files(&self, dir: &Path) -> Result<(), std::io::Error> {
+        // Iterate over files in source directory
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() {
+                // Delete file
+                fs::remove_file(&path)?;
+            } else if path.is_dir() {
+                // Recursively delete subdirectory
+                let _= &self.delete_files(&path).expect("Failed to delete files");
+            }
+        }
+
+        Ok(())
+    }
 }

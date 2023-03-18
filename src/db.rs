@@ -21,12 +21,11 @@ pub struct Location {
     pub location_path: String,
     pub description: String,
 }
-
 pub struct Save {
     pub id: i32,
     pub game_id: i32,
     pub location_id: i32,
-    pub metadata: String,
+    pub metadata: Option<String>,
     pub platform_id: i32,
 }
 
@@ -213,17 +212,62 @@ impl Db {
         Ok(id)
     }
 
-    pub fn get_game(&self, game_id: i32) -> Result<String> {
-        let mut stmt = self.conn.prepare("SELECT title FROM Game WHERE id = ?1")?;
+    /// Updates the details of a game in the database.
+    ///
+    /// # Arguments
+    ///
+    /// * `game_id` - An integer representing the ID of the game to be updated.
+    /// * `title` - A string slice representing the updated title of the game.
+    /// * `publisher` - A string slice representing the updated publisher of the game.
+    /// * `release_date` - A string slice representing the updated release date of the game.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the update operation fails.
+    pub fn update_game(&self, game_id: i32, title: &str, publisher: &str, release_date: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE Game SET title = ?1, publisher = ?2, release_date = ?3 WHERE id = ?4",
+            params![title, publisher, release_date, game_id],
+        )?;
+        Ok(())
+    }
+
+        /// Retrieves the game data from the database with the specified ID.
+        ///
+        /// # Arguments
+        ///
+        /// * `game_id` - The ID of the game to retrieve from the database.
+        ///
+        /// # Returns
+        ///
+        /// Returns a `Result` containing the retrieved `Game` struct, or an error if the game
+        /// cannot be found in the database.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if the game cannot be found in the database, or if there
+        /// is an issue with the SQLite query.
+        pub fn get_game(&self, game_id: i32) -> Result<Game> {
+        let mut stmt = self.conn.prepare("SELECT * FROM Game WHERE id = ?1")?;
         let game_iter = stmt.query_map(params![game_id], |row| {
-            Ok(row.get(0)?)
+            Ok(Game {
+                id: row.get(0)?,
+                title: row.get(1).unwrap_or_default(),
+                publisher: row.get(2).unwrap_or_default(),
+                release_date: row.get(3).unwrap_or_default(),
+            })
         })?;
 
         for game in game_iter {
             return Ok(game?);
         }
 
-        Ok(String::from("No game found"))
+        Ok(Game {
+            id: -1,
+            title: String::from(""),
+            publisher: String::from(""),
+            release_date: i32::from(0),
+        })
     }
 
     /// Retrieves a game from the database by its title.
@@ -255,9 +299,9 @@ impl Db {
         let game_iter = stmt.query_map(params![title], |row| {
             Ok(Game {
                 id: row.get(0)?,
-                title: row.get(1)?,
-                publisher: row.get(2)?,
-                release_date: row.get(3)?,
+                title: row.get(1).unwrap_or_default(),
+                publisher: row.get(2).unwrap_or_default(),
+                release_date: row.get(3).unwrap_or_default(),
             })
         })?;
 
@@ -271,6 +315,38 @@ impl Db {
             publisher: String::from(""),
             release_date: i32::from(0),
         })
+    }
+
+        /// Retrieves a vector of all games in the database that have a title starting with the specified string.
+        ///
+        /// # Arguments
+        ///
+        /// * `title` - A string slice representing the beginning of the title of the desired games.
+        ///
+        /// # Returns
+        ///
+        /// * A `Result` containing a vector of `Game` structs if successful, otherwise an error.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// let db = Db::new("local_games.db").unwrap();
+        /// let games = db.get_games_by_title("The");
+        /// println!("{:?}", games);
+        /// ```
+        pub fn get_games_by_title(&self, title: &str) -> Result<Vec<Game>>{
+        // Shows all the games starting with the title
+        let mut stmt = self.conn.prepare("SELECT * FROM Game WHERE title LIKE ?1")?;
+        let game_iter = stmt.query_map(params![format!("{}%", title)], |row| {
+            Ok(Game {
+                id: row.get(0)?,
+                title: row.get(1).unwrap_or_default(),
+                publisher: row.get(2).unwrap_or_default(),
+                release_date: row.get(3).unwrap_or_default(),
+            })
+        })?;
+        let games = game_iter.collect::<Result<Vec<Game>>>()?;
+        Ok(games)
     }
 
     /// Retrieves a platform from the database with the specified platform ID.
@@ -293,7 +369,7 @@ impl Db {
         let platform_iter = stmt.query_map(params![platform_id], |row| {
             Ok(Platform {
                 id: platform_id,
-                platform_name: row.get(0)?,
+                platform_name: row.get(0).unwrap_or_default(),
             })
         })?;
 
@@ -326,8 +402,8 @@ impl Db {
         let location_iter = stmt.query_map(params![location_id], |row| {
             Ok(Location {
                 id: location_id,
-                location_path: row.get(0)?,
-                description: row.get(1)?,
+                location_path: row.get(0).unwrap_or_default(),
+                description: row.get(1).unwrap_or_default(),
             })
         })?;
 
@@ -371,7 +447,7 @@ impl Db {
                 id: row.get(0)?,
                 game_id: row.get(1)?,
                 location_id: row.get(2)?,
-                metadata: row.get(3)?,
+                metadata: row.get(3).unwrap_or_default(),
                 platform_id: row.get(4)?,
             })
         })?;
@@ -413,9 +489,15 @@ impl Db {
         Ok(platforms)
     }
 
-    pub fn get_all_locations(&self) -> Result<Vec<String>> {
+    pub fn get_all_locations(&self) -> Result<Vec<Location>> {
         let mut stmt = self.conn.prepare("SELECT location_path FROM Location")?;
-        let rows = stmt.query_map([], |row| row.get(0))?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Location {
+                id: row.get(0)?,
+                location_path: row.get(1)?,
+                description: row.get(2)?,
+            })
+        })?;
 
         let mut locations = Vec::new();
         for location in rows {
@@ -437,9 +519,17 @@ impl Db {
         Ok(saves)
     }
 
-    pub fn get_all_saves_for_game(&self, game_id: i32) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT metadata FROM Save WHERE game_id = ?1")?;
-        let rows = stmt.query_map([], |row| row.get(0))?;
+    pub fn get_all_saves_by_id(&self, game_id: i32) -> Result<Vec<Save>> {
+        let mut stmt = self.conn.prepare("SELECT * FROM Save WHERE game_id = ?1")?;
+        let rows = stmt.query_map(params![game_id], |row| {
+            Ok(Save {
+                id: row.get(0)?,
+                game_id: row.get(1)?,
+                location_id: row.get(2)?,
+                metadata: row.get(3).unwrap_or_default(),
+                platform_id: row.get(4)?,
+            })
+        })?;
 
         let mut saves = Vec::new();
         for save in rows {
@@ -519,6 +609,27 @@ impl Db {
         }
 
         Ok(saves)
+    }
+
+    pub fn delete_game(&self, game_id: i32) -> Result<()> {
+        let mut stmt = self.conn.prepare("DELETE FROM Game WHERE id = ?1")?;
+        stmt.execute(params![game_id])?;
+
+        Ok(())
+    }
+
+    pub fn delete_save(&self, save_id: i32) -> Result<()> {
+        let mut stmt = self.conn.prepare("DELETE FROM Save WHERE id = ?1")?;
+        stmt.execute(params![save_id])?;
+
+        Ok(())
+    }
+
+    pub fn delete_location(&self, location_id: i32) -> Result<()> {
+        let mut stmt = self.conn.prepare("DELETE FROM Location WHERE id = ?1")?;
+        stmt.execute(params![location_id])?;
+
+        Ok(())
     }
 }
 
