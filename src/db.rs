@@ -31,12 +31,33 @@ pub struct Save {
 }
 
 impl Db {
+    /// Opens a new connection to a SQLite database file.
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name of the SQLite database file to connect to.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the database file cannot be opened.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use crate::db::Db;
+    ///
+    /// let db = Db::new("mydatabase.db").expect("Failed to create database connection");
+    /// ```
     pub fn new(filename: &str) -> Result<Self> {
         let conn = Connection::open(filename)?;
         Ok(Self { conn })
     }
 
-    /// Create the tables in the database if they don't already exist
+    /// Create the necessary database tables if they do not already exist.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there is an issue executing the SQL statements to create the tables.
     pub fn create_tables(&self) -> Result<()> {
         // Check if the tables in the database exist If they don't, create them
         self.conn.execute(
@@ -83,9 +104,22 @@ impl Db {
         Ok(())
     }
 
-    /// Insert a game into the database
-    /// Returns the ID of the inserted game
-    pub fn insert_game(&self, title: &str, publisher: &str, release_date: &str) -> Result<i32> {
+    /// Inserts a new game into the database with the given title, publisher, and release date.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - The title of the game to be inserted.
+    /// * `publisher` - The publisher of the game to be inserted.
+    /// * `release_date` - The release date of the game to be inserted.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there was a problem inserting the game into the database.
+    ///
+    /// # Returns
+    ///
+    /// Returns the ID of the newly inserted game on success.
+        pub fn insert_game(&self, title: &str, publisher: &str, release_date: &str) -> Result<i32> {
         self.conn.execute(
             "INSERT INTO Game (title, publisher, release_date) VALUES (?1, ?2, ?3)",
             params![title, publisher, release_date],
@@ -95,6 +129,19 @@ impl Db {
         Ok(id)
     }
 
+    /// Inserts a new platform into the database with the given platform name.
+    ///
+    /// # Arguments
+    ///
+    /// * `platform_name` - The name of the platform to be inserted.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there was a problem inserting the platform into the database.
+    ///
+    /// # Returns
+    ///
+    /// Returns the ID of the newly inserted or updated platform on success. If a row with the same platform name already exists in the database, the function will return the ID of that row instead.
     pub fn insert_platform(&self, platform_name: &str) -> Result<i32> {
         // Check if a row with the same platform_name already exists
         let mut stmt = self.conn.prepare("SELECT id FROM Platform WHERE platform_name = ?1")?;
@@ -116,6 +163,20 @@ impl Db {
         Ok(id)
     }
     
+    /// Inserts a new location into the database with the given location path and description.
+    ///
+    /// # Arguments
+    ///
+    /// * `location_path` - The path of the location to be inserted.
+    /// * `description` - A description of the location to be inserted.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there was a problem inserting the location into the database.
+    ///
+    /// # Returns
+    ///
+    /// Returns the ID of the newly inserted location on success.
     pub fn insert_location(&self, location_path: &str, description: &str) -> Result<i32> {
         self.conn.execute(
             "INSERT INTO Location (location_path, description) VALUES (?1, ?2)",
@@ -126,6 +187,22 @@ impl Db {
         Ok(id)
     }
 
+    /// Inserts a new save into the database with the given game ID, location ID, metadata, and platform ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `game_id` - The ID of the game that the save belongs to.
+    /// * `location_id` - The ID of the location where the save is stored.
+    /// * `metadata` - Any additional metadata associated with the save.
+    /// * `platform_id` - The ID of the platform that the save is for.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there was a problem inserting the save into the database.
+    ///
+    /// # Returns
+    ///
+    /// Returns the ID of the newly inserted save on success.
     pub fn insert_save(&self, game_id: i32, location_id: i32, metadata: &str, platform_id: i32) -> Result<i32> {
         self.conn.execute(
             "INSERT INTO Save (game_id, location_id, metadata, platform_id) VALUES (?1, ?2, ?3, ?4)",
@@ -149,7 +226,30 @@ impl Db {
         Ok(String::from("No game found"))
     }
 
-    /// Get the ID of a game by its title and returns the game model
+    /// Retrieves a game from the database by its title.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - The title of the game to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a `Game` struct representing the retrieved game if successful, or an error if the operation failed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let game_title = "The Legend of Zelda: Breath of the Wild";
+    /// let game = db.get_game_by_title(game_title)?;
+    ///
+    /// println!("Game Title: {}", game.title);
+    /// println!("Publisher: {}", game.publisher);
+    /// println!("Release Date: {}", game.release_date);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the database operation fails for any reason.
     pub fn get_game_by_title(&self, title: &str) -> Result<Game> {
         let mut stmt = self.conn.prepare("SELECT * FROM Game WHERE title = ?1")?;
         let game_iter = stmt.query_map(params![title], |row| {
@@ -173,6 +273,21 @@ impl Db {
         })
     }
 
+    /// Retrieves a platform from the database with the specified platform ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `platform_id` - An `i32` that represents the ID of the platform to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a `Platform` struct representing the platform retrieved from the database.
+    /// If the platform is not found in the database, the function returns a `Platform` struct with an ID of -1
+    /// and an empty `platform_name` field.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there is a problem executing the SQL statement to retrieve the platform.
     pub fn get_platform(&self, platform_id: i32) -> Result<Platform> {
         let mut stmt = self.conn.prepare("SELECT platform_name FROM Platform WHERE id = ?1")?;
         let platform_iter = stmt.query_map(params![platform_id], |row| {
@@ -192,6 +307,20 @@ impl Db {
         })
     }
 
+    /// Retrieves a location record from the database with the given location ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `location_id` - An integer representing the ID of the location to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// A `Location` struct containing the location information, or a `Location` struct with default values if the location
+    /// with the given ID is not found.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the database connection fails or if the SQL query fails.
     pub fn get_location(&self, location_id: i32) -> Result<Location> {
         let mut stmt = self.conn.prepare("SELECT location_path, description FROM Location WHERE id = ?1")?;
         let location_iter = stmt.query_map(params![location_id], |row| {
@@ -226,6 +355,15 @@ impl Db {
         Ok(String::from("No save found"))
     }
 
+    /// Returns a vector of `Save` objects for a given `game_id`.
+    ///
+    /// # Arguments
+    ///
+    /// * `game_id` - The ID of the game to retrieve saves for.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the query fails.
     pub fn get_saves_by_game_id(&self, game_id: i32) -> Result<Vec<Save>> {
         let mut stmt = self.conn.prepare("SELECT * FROM Save WHERE game_id = ?1")?;
         let save_iter = stmt.query_map(params![game_id], |row| {

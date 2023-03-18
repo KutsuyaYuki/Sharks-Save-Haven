@@ -38,6 +38,23 @@ fn main() {
     }
 }
 
+/// Adds a new game save to the database and creates a backup of the save files in the backup folder.
+///
+/// # Arguments
+///
+/// * `db` - A reference to a `db::Db` instance.
+/// * `fs` - A reference to a `filesystem::Filesystem` instance.
+///
+/// # Errors
+///
+/// This function will return an error if any of the following operations fail:
+///
+/// * Failed to read user input
+/// * Failed to insert game information into the database
+/// * Failed to insert platform information into the database
+/// * Failed to insert location information into the database
+/// * Failed to insert save information into the database
+/// * Failed to copy save files to backup folder
 fn add_game_save(db : &db::Db, fs : &filesystem::Filesystem) {
     // Get the game title from the user
     print!("Enter the game title: ");
@@ -82,7 +99,26 @@ fn add_game_save(db : &db::Db, fs : &filesystem::Filesystem) {
 
 }
 
-/// restore a game save
+/// Prompts the user to restore a game save.
+///
+/// Retrieves the game save data from the database and displays it to the user. Asks the user if they want to restore the game save and if so, copies the save files from the backup folder to the original save file location. If the user wants to restore only select files, prompts the user to confirm each file copy operation.
+///
+/// # Arguments
+///
+/// * `db` - A reference to a `Db` instance to retrieve data from the local_games database.
+/// * `fs` - A reference to a `Filesystem` instance to handle file I/O operations.
+///
+/// # Examples
+///
+/// ```
+/// let db = db::Db::new("local_games.db").unwrap();
+/// let fs = filesystem::Filesystem::new();
+/// restore_game_save(&db, &fs);
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if the backup file copy operation fails due to a file I/O error.
 fn restore_game_save(db : &db::Db, fs : &filesystem::Filesystem) {
     // Get the game title from the user
     print!("Enter the game title: ");

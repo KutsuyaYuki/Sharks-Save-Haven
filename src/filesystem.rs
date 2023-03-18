@@ -9,7 +9,17 @@ impl Filesystem {
         Self {}
     }
 
-    // This function copies all the files in a folder to an other folder and if that folder doesn't exist it creates it
+    /// Copies all the files in a folder to another folder and creates it if it doesn't exist.
+    ///
+    /// # Arguments
+    ///
+    /// * `source_dir` - The path to the source directory.
+    /// * `dest_dir` - The path to the destination directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if it fails to create the destination directory or if it
+    /// fails to copy any of the files.
     pub fn copy_files(&self, source_dir: &Path, dest_dir: &Path) -> Result<(), std::io::Error> {
         // Create destination directory if it doesn't exist
         if !dest_dir.exists() {
