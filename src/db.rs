@@ -36,6 +36,7 @@ impl Db {
         Ok(Self { conn })
     }
 
+    /// Create the tables in the database if they don't already exist
     pub fn create_tables(&self) -> Result<()> {
         // Check if the tables in the database exist If they don't, create them
         self.conn.execute(
@@ -83,6 +84,7 @@ impl Db {
     }
 
     /// Insert a game into the database
+    /// Returns the ID of the inserted game
     pub fn insert_game(&self, title: &str, publisher: &str, release_date: &str) -> Result<i32> {
         self.conn.execute(
             "INSERT INTO Game (title, publisher, release_date) VALUES (?1, ?2, ?3)",
@@ -170,19 +172,6 @@ impl Db {
             release_date: i32::from(0),
         })
     }
-
-    // pub fn get_game_by_title(&self, title: &str) -> Result<i32> {
-    //     let mut stmt = self.conn.prepare("SELECT id FROM Game WHERE title = ?1")?;
-    //     let game_iter = stmt.query_map(params![title], |row| {
-    //         Ok(row.get(0)?)
-    //     })?;
-
-    //     for game in game_iter {
-    //         return Ok(game?);
-    //     }
-
-    //     Ok(-1)
-    // }
 
     pub fn get_platform(&self, platform_id: i32) -> Result<Platform> {
         let mut stmt = self.conn.prepare("SELECT platform_name FROM Platform WHERE id = ?1")?;

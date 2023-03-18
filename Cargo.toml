@@ -1,12 +1,15 @@
 [package]
-name = "Sharks-Save-Haven"
+name = "sharks_save_haven"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rusqlite = "0.26.0"
+
+[dependencies.rusqlite]
+version = "0.28.0"
+features = ["bundled"]
 
 [profile.release]
 # Enable optimizations for release mode
@@ -15,3 +18,7 @@ lto = true          # Enable link-time optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations
 panic = 'abort'     # Abort on panic
 strip = true        # Strip symbols from binary*
+
+[[bin]]
+name = "sharks_save_haven"
+path = "src/main.rs"

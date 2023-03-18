@@ -1,13 +1,18 @@
+use std::fs::{self};
 use std::io::{self, Write};
-
-use crate::db::Db;
+use std::path::{Path, PathBuf};
 
 mod db;
+mod filesystem;
 const DB_NAME: &str = "local_games.db";
 
 fn main() {
     let db : db::Db;
     db = db::Db::new(DB_NAME).expect("Failed to create database connection");
+
+    let fs : filesystem::Filesystem;
+    fs = filesystem::Filesystem::new();
+
     db.create_tables().expect("Failed to create tables");
 
     // Display the main menu
@@ -25,15 +30,15 @@ fn main() {
 
         // Handle the user's choice
         match choice.trim() {
-            "1" => add_game_save(&db),
-            "2" => retrieve_game_save(&db),
+            "1" => add_game_save(&db, &fs),
+            "2" => restore_game_save(&db, &fs),
             "3" => break,
             _ => println!("Invalid choice"),
         }
     }
 }
 
-fn add_game_save(db : &db::Db) {
+fn add_game_save(db : &db::Db, fs : &filesystem::Filesystem) {
     // Get the game title from the user
     print!("Enter the game title: ");
     io::stdout().flush().unwrap();
@@ -64,15 +69,21 @@ fn add_game_save(db : &db::Db) {
     let mut location = String::new();
     io::stdin().read_line(&mut location).expect("Failed to read line");
 
-    
     let game_id = db.insert_game(title.trim(), publisher.trim(), release_date.trim()).expect("Failed to insert game");
     let platform_id = db.insert_platform(platform.trim()).expect("Failed to insert platform");
     let location_id = db.insert_location(&location.trim(), "").expect("Failed to insert location");
-    db.insert_save(game_id, location_id, "", platform_id).expect("Failed to insert save");
+    let save_id = db.insert_save(game_id, location_id, "", platform_id).expect("Failed to insert save");
+
+    // Copy the save files to the backup folder
+    let save_file_location = PathBuf::from(&location.trim());
+    let backup_file_location = PathBuf::from(&format!("backups/{}/{}/{}/", game_id, platform_id, save_id));
+
+    fs.copy_files(&save_file_location, &backup_file_location).expect("Failed to copy files");
 
 }
 
-fn retrieve_game_save(db : &db::Db) {
+/// restore a game save
+fn restore_game_save(db : &db::Db, fs : &filesystem::Filesystem) {
     // Get the game title from the user
     print!("Enter the game title: ");
     io::stdout().flush().unwrap();
@@ -81,12 +92,21 @@ fn retrieve_game_save(db : &db::Db) {
 
     // Retrieve the data from the database
     let game = db.get_game_by_title(title.trim()).expect("Failed to retrieve game from database");
+
+    // Check if the game exists in the database
+    if game.id == -1 {
+        println!("Game not found");
+        return ();
+    }
+
     let saves = db.get_saves_by_game_id(game.id).expect("Failed to retrieve save from database");
 
+    // Display the game save data to the user
     for save in saves.iter() {
         let location = db.get_location(save.location_id).expect("Failed to retrieve location from database");
         let platform = db.get_platform(save.platform_id).expect("Failed to retrieve platform from database");
         
+        // Display the game save data
         println!("Game title: {}", game.title);
         println!("Publisher: {}", game.publisher);
         println!("Release date: {}", game.release_date);
@@ -103,12 +123,38 @@ fn retrieve_game_save(db : &db::Db) {
         // default option y
         if restore.trim() == "Y" || restore.trim() == "" {
             println!("Restoring game save...");
+
+            // Copy the save files from the backup folder to the save file location one by one and ask per file
+            let backup_file_location = PathBuf::from(&format!("backups/{}/{}/{}/", game.id, save.platform_id, save.id));
+
+            for entry in fs::read_dir(&backup_file_location).expect("Failed to read directory") {
+                let entry = entry.expect("Failed to read directory entry");
+                let file_name = entry.file_name();
+                let file_path = entry.path();
+            
+                // Ask the user whether to copy the file or not
+                print!("Copy file {:?}? (Y/n): ", file_name);
+                io::stdout().flush().unwrap();
+                let mut answer = String::new();
+                io::stdin().read_line(&mut answer).expect("Failed to read answer");
+            
+                if answer.trim().to_lowercase() == "y"  || restore.trim() == "" {
+                    // Copy the file to the save file location
+                    let dest_file = Path::new(&location.location_path).join(file_name);
+                    fs::copy(&file_path, &dest_file).expect("Failed to copy file");
+                }
+            }            
         }
+
         // if the user wants to restore all game saves, copy the save file to the correct location
         else if restore.trim() == "a" {
             println!("Restoring all game saves...");
+            
+            // Copy the save files from the backup folder to the save file location
+            let save_file_location = PathBuf::from(&location.location_path);
+            let backup_file_location = PathBuf::from(&format!("backups/{}/{}/{}/", game.id, save.platform_id, save.id));
+
+            fs.copy_files(&backup_file_location, &save_file_location).expect("Failed to copy files");
         }
     }
-
-    
 }

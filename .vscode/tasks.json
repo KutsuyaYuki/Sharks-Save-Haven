@@ -1,0 +1,17 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Windows build",
+            "type": "shell",
+            "command": "cargo build --target x86_64-pc-windows-gnu --release"
+        },
+        {
+            "label": "Linux build",
+            "type": "shell",
+            "command": "cargo build --target=x86_64-unknown-linux-gnu --release"
+        }
+    ]
+}
