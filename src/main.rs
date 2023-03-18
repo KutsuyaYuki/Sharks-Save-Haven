@@ -26,7 +26,7 @@ fn main() {
         // Handle the user's choice
         match choice.trim() {
             "1" => add_game_save(&db),
-            "2" => retrieve_game_save(),
+            "2" => retrieve_game_save(&db),
             "3" => break,
             _ => println!("Invalid choice"),
         }
@@ -72,13 +72,43 @@ fn add_game_save(db : &db::Db) {
 
 }
 
-fn retrieve_game_save() {
+fn retrieve_game_save(db : &db::Db) {
     // Get the game title from the user
     print!("Enter the game title: ");
     io::stdout().flush().unwrap();
     let mut title = String::new();
     io::stdin().read_line(&mut title).expect("Failed to read line");
 
-    // TODO: Retrieve the game save data from the database and display it to the user
-    println!("TODO: Retrieve game save data");
+    // Retrieve the data from the database
+    let game = db.get_game_by_title(title.trim()).expect("Failed to retrieve game from database");
+    let saves = db.get_saves_by_game_id(game.id).expect("Failed to retrieve save from database");
+
+    for save in saves.iter() {
+        let location = db.get_location(save.location_id).expect("Failed to retrieve location from database");
+        let platform = db.get_platform(save.platform_id).expect("Failed to retrieve platform from database");
+        
+        println!("Game title: {}", game.title);
+        println!("Publisher: {}", game.publisher);
+        println!("Release date: {}", game.release_date);
+        println!("Platform: {}", platform.platform_name);
+        println!("Save file location: {}", location.location_path);     
+        
+        // Ask the user if they want to restore the game save
+        print!("Do you want to restore this game save? (Y/n/a): ");
+        io::stdout().flush().unwrap();
+        let mut restore = String::new();
+        io::stdin().read_line(&mut restore).expect("Failed to read line");
+
+        // If the user wants to restore the game save, copy the save file to the correct location
+        // default option y
+        if restore.trim() == "Y" || restore.trim() == "" {
+            println!("Restoring game save...");
+        }
+        // if the user wants to restore all game saves, copy the save file to the correct location
+        else if restore.trim() == "a" {
+            println!("Restoring all game saves...");
+        }
+    }
+
+    
 }
