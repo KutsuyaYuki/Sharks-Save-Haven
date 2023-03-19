@@ -460,9 +460,16 @@ impl Db {
         Ok(saves)
     }
     
-    pub fn get_all_games(&self) -> Result<Vec<String>> {
-        let mut stmt = self.conn.prepare("SELECT title FROM Game")?;
-        let rows = stmt.query_map([], |row| row.get(0))?;
+    pub fn get_all_games(&self) -> Result<Vec<Game>> {
+        let mut stmt = self.conn.prepare("SELECT * FROM Game")?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Game {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                publisher: row.get(2)?,
+                release_date: row.get(3)?,
+            })
+        })?;
 
         let mut games = Vec::new();
         for game in rows {

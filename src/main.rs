@@ -2,46 +2,142 @@ use std::fs::{self};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use db::Game;
+use eframe::egui;
+use widgets::{Column, TableBuilder};
+
 mod db;
 mod filesystem;
+mod widgets;
 const DB_NAME: &str = "local_games.db";
 
-fn main() {
-    let db: db::Db;
-    db = db::Db::new(DB_NAME).expect("Failed to create database connection");
+struct MyApp {
+    items: Vec<Game>,
+    selected_item: Option<usize>,
+    db: Box<db::Db>,
+    fs: Box<filesystem::Filesystem>,
+}
 
-    let fs: filesystem::Filesystem;
-    fs = filesystem::Filesystem::new();
+impl MyApp {
+    fn new() -> Self {
+        let db =db::Db::new(DB_NAME).expect("Failed to create database connection");
+        let fs =filesystem::Filesystem::new();
 
-    db.create_tables().expect("Failed to create tables");
+        db.create_tables().expect("Failed to create tables");
 
-    // Display the main menu
-    loop {
-        println!("--- Game Save Backup and Restore ---");
-        println!("1. Add a game save");
-        println!("2. Restore a game save");
-        println!("3. Update a game save");
-        println!("4. Delete a game save");
-        println!("5. Exit");
+        let games = db.get_all_games().expect("Failed to get games");
 
-        // Get the user's choice
-        print!("> ");
-        io::stdout().flush().unwrap();
-        let mut choice = String::new();
-        io::stdin()
-            .read_line(&mut choice)
-            .expect("Failed to read line");
-
-        // Handle the user's choice
-        match choice.trim() {
-            "1" => add_game_save(&db, &fs),
-            "2" => restore_game_save(&db, &fs),
-            "3" => update_game_save(&db, &fs),
-            "4" => delete_game_save(&db, &fs),
-            "5" => break,
-            _ => println!("Invalid choice"),
+        Self {
+            items: games,
+            selected_item: None,
+            db: Box::new(db),
+            fs: Box::new(fs),
         }
     }
+
+    fn table_ui(&mut self, ui: &mut egui::Ui) {
+        // Create a table builder and add columns
+        let table = TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Column::initial(100.0).range(40.0..=300.0).resizable(true))
+        .column(
+            Column::initial(100.0)
+                .at_least(40.0)
+                .resizable(true)
+                .clip(true),
+        )
+        .column(Column::remainder())
+        .min_scrolled_height(0.0)
+        .selected_row(&mut self.selected_item);
+    
+    table
+        .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.strong("Game ID");
+            });
+            header.col(|ui| {
+                ui.strong("Publisher");
+            });
+            header.col(|ui| {
+                ui.strong("Title");
+            });
+        })
+        .body(|mut body| match &self.items {
+            game => {
+                for row_index in 0..game.len() {
+                    let row_height = 18.00;
+                    body.row(row_height, |mut row| {
+                        row.col(|ui| {
+                            ui.label(
+                                game[row_index].id.to_string().clone(),
+                            );
+                        });
+    
+                        row.col(|ui| {
+                            ui.label(
+                                game[row_index]
+                                    .publisher
+                                    .to_string()
+                                    .clone(),
+                            );
+                        });
+    
+                        row.col(|ui| {
+                            ui.label(
+                                game[row_index].title.to_string().clone(),
+                            );
+                        });
+                    });
+                }
+            }
+        });
+    }
+}
+
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Shark's Safe Haven");
+
+            // Leave room for the source code link after the table demo:
+            use egui_extras::{Size, StripBuilder};
+            StripBuilder::new(ui)
+                .size(Size::remainder().at_least(100.0)) // for the table
+                .size(Size::exact(40.0)) // for the source code link
+                .vertical(|mut strip| {
+                    strip.cell(|ui| {
+                        egui::ScrollArea::horizontal().show(ui, |ui| {
+                            self.table_ui(ui);
+                        });
+                    });
+                    strip.cell(|ui| {
+                            ui.separator();
+                            let response = ui.button("Add Game");
+                            if response.clicked() {
+                                add_game_save(self.db.as_ref(), self.fs.as_ref());
+                            }
+
+                            ui.label(self.selected_item.map_or("None".to_string(), |i| format!("Selected: {}", i)));
+                    });
+                });
+
+        });
+    }
+}
+
+fn main() -> Result<(), eframe::Error> {
+    let my_app = MyApp::new();
+
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(800.0, 600.0)),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Shark's Safe Haven",
+        options,
+        Box::new(|_cc| Box::new(my_app)),
+    )
 }
 
 fn delete_game_save(db: &db::Db, fs: &filesystem::Filesystem) {
