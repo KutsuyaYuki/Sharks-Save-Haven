@@ -4,11 +4,13 @@ pub struct Db {
     conn: Connection,
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Game {
     pub id: i32,
     pub title: String,
     pub publisher: String,
     pub release_date: i32,
+    pub platform: String,
 }
 
 pub struct Platform {
@@ -255,6 +257,7 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
+                platform: row.get(4).unwrap_or_default(),
             })
         })?;
 
@@ -267,6 +270,7 @@ impl Db {
             title: String::from(""),
             publisher: String::from(""),
             release_date: i32::from(0),
+            platform: String::from(""),
         })
     }
 
@@ -302,6 +306,7 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
+                platform: row.get(4).unwrap_or_default(),
             })
         })?;
 
@@ -314,6 +319,7 @@ impl Db {
             title: String::from(""),
             publisher: String::from(""),
             release_date: i32::from(0),
+            platform: String::from(""),
         })
     }
 
@@ -343,6 +349,7 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
+                platform: row.get(4).unwrap_or_default(),
             })
         })?;
         let games = game_iter.collect::<Result<Vec<Game>>>()?;
@@ -468,6 +475,7 @@ impl Db {
                 title: row.get(1)?,
                 publisher: row.get(2)?,
                 release_date: row.get(3)?,
+                platform: row.get(4)?,
             })
         })?;
 

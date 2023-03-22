@@ -12,48 +12,7 @@ impl<'a> GameSaves<'a>{
         Self{db, fs}
     }
 
-    pub fn remove_game_save(&self) {
-    
-        // Messagebox warning the user that they are about to delete a game
-        egui::Window::new("Message")
-            .default_width(200.0)
-            .show(&egui::Context::default(), |ui| {
-                ui.label("message");
-                if ui.button("OK").clicked() {
-                    // handle OK button clicked event
-                }
-            });
-
-        // Get the game title from the user
-        print!("Enter the game title: ");
-        io::stdout().flush().unwrap();
-        let mut title = String::new();
-        io::stdin()
-            .read_line(&mut title)
-            .expect("Failed to read line");
-    
-        // Retrieve games from the database and display them to the user
-        let games = self.db
-            .get_games_by_title(title.trim())
-            .expect("Failed to get games");
-        if games.is_empty() {
-            println!("No games found with that title");
-        } else {
-            println!("Select a game to delete:");
-            for game in games {
-                println!("{} - {}", game.id, game.title);
-            }
-    
-            // Get the user's choice
-            print!("> ");
-            io::stdout().flush().unwrap();
-            let mut choice = String::new();
-            io::stdin()
-                .read_line(&mut choice)
-                .expect("Failed to read line");
-    
-            // Convert the user's choice to an integer
-            let game_id = choice.trim().parse::<i32>().expect("Invalid input");
+    pub fn remove_game_save(&self, game_id: i32) {    
     
             // Check if the game exists in the database
             let existing_game = self.db.get_game(game_id).expect("Failed to get game");
@@ -86,7 +45,6 @@ impl<'a> GameSaves<'a>{
     
             println!("'{}' deleted", existing_game.title);
         }
-    }
     
     pub fn edit_game_save(&self) {
         // Get the game title from the user
