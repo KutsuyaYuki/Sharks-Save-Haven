@@ -4,14 +4,16 @@ use crate::{
     db::{self, Game},
     filesystem,
     game_saves::GameSaves,
-    widgets::{Column, TableBuilder, self},
+    widgets::{self, Column, TableBuilder},
     DB_NAME,
 };
 
 #[derive(Clone, Debug, Default)]
 struct NewGameState {
     new_game: Game,
-    release_date_input:String,
+    release_date_input: String,
+    plartform_input: String,
+    location_input: String,
 }
 
 impl NewGameState {
@@ -29,6 +31,7 @@ pub struct SharkGui {
     selected_item: Option<usize>,
     db: Box<db::Db>,
     fs: Box<filesystem::Filesystem>,
+    picked_path: Option<String>,
 }
 
 impl SharkGui {
@@ -47,6 +50,7 @@ impl SharkGui {
             selected_item: None,
             db,
             fs,
+            picked_path: None,
         }
     }
 
@@ -176,27 +180,60 @@ impl eframe::App for SharkGui {
                                         let year = 2023;
                                         let month = 3;
                                         let day = 22;
-                                        let release_date = format!("{:04}{:02}{:02}", year, month, day).parse::<i32>().unwrap();
-                                        
-                                        let mut new_game_state = NewGameState::load(ctx).unwrap_or_default();
+                                        let release_date =
+                                            format!("{:04}{:02}{:02}", year, month, day)
+                                                .parse::<i32>()
+                                                .unwrap();
+
+                                        let mut new_game_state =
+                                            NewGameState::load(ctx).unwrap_or_default();
                                         new_game_state.new_game.id = -1;
-                                        
-                                        ui.label("Publisher");
-                                        ui.text_edit_singleline(&mut new_game_state.new_game.publisher);
-                                        
+
                                         ui.label("Title");
                                         ui.text_edit_singleline(&mut new_game_state.new_game.title);
-                                        
-                                        ui.label("Release Date");
-                                        ui.text_edit_singleline(&mut new_game_state.release_date_input);
-                                        // if let Ok(parsed_release_date) = new_game_state.release_date_input.parse::<i32>() {
-                                        //     new_game_state.new_game.release_date = parsed_release_date;
-                                        // } else {
-                                        //     // handle invalid input
-                                        // }
-                                        
+
+                                        ui.label("Publisher");
+                                        ui.text_edit_singleline(
+                                            &mut new_game_state.new_game.publisher,
+                                        );
+                                        ui.label("Platform");
+                                        ui.text_edit_singleline(
+                                            &mut new_game_state.plartform_input,
+                                        );
+
+                                        ui.label("Release Date (YYYYMMDD)");
+                                        ui.text_edit_singleline(
+                                            &mut new_game_state.release_date_input,
+                                        );
+
+                                        ui.vertical(|ui| {
+                                            ui.label("Location");
+                                            if ui.button("Open file…").clicked() {
+                                                if let Some(path) =
+                                                    rfd::FileDialog::new().pick_folder()
+                                                {
+                                                    new_game_state.location_input =
+                                                        Some(path.display().to_string())
+                                                            .unwrap_or_default();
+                                                }
+                                            }
+
+                                            ui.text_edit_singleline(
+                                                &mut new_game_state.location_input,
+                                            );
+                                        });
+
                                         if ui.button("Finish").clicked() {
-                                            return;
+                                            if let Ok(parsed_release_date) = new_game_state.release_date_input.parse::<i32>() {
+                                                new_game_state.new_game.release_date = parsed_release_date;
+                                            } else {
+                                                // handle invalid input
+                                            }
+                                            // Insert game
+                                            game_save.add_game_save(
+                                                new_game_state.new_game.clone(),
+                                                new_game_state.location_input.clone(), new_game_state.plartform_input.clone());
+                                            ui.memory_mut(|mem| mem.toggle_popup(add_popup_id));
                                         }
                                         if ui.button("Cancel").clicked() {
                                             ui.memory_mut(|mem| mem.toggle_popup(add_popup_id));

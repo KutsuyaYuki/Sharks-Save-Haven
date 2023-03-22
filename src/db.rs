@@ -10,7 +10,6 @@ pub struct Game {
     pub title: String,
     pub publisher: String,
     pub release_date: i32,
-    pub platform: String,
 }
 
 pub struct Platform {
@@ -23,6 +22,7 @@ pub struct Location {
     pub location_path: String,
     pub description: String,
 }
+
 pub struct Save {
     pub id: i32,
     pub game_id: i32,
@@ -120,10 +120,10 @@ impl Db {
     /// # Returns
     ///
     /// Returns the ID of the newly inserted game on success.
-        pub fn insert_game(&self, title: &str, publisher: &str, release_date: &str) -> Result<i32> {
+        pub fn insert_game(&self, game:Game) -> Result<i32> {
         self.conn.execute(
             "INSERT INTO Game (title, publisher, release_date) VALUES (?1, ?2, ?3)",
-            params![title, publisher, release_date],
+            params![game.title, game.publisher, game.release_date],
         )?;
         // return the last inserted row id
         let id = self.conn.last_insert_rowid() as i32;
@@ -257,7 +257,6 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
-                platform: row.get(4).unwrap_or_default(),
             })
         })?;
 
@@ -270,7 +269,6 @@ impl Db {
             title: String::from(""),
             publisher: String::from(""),
             release_date: i32::from(0),
-            platform: String::from(""),
         })
     }
 
@@ -306,7 +304,6 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
-                platform: row.get(4).unwrap_or_default(),
             })
         })?;
 
@@ -319,7 +316,6 @@ impl Db {
             title: String::from(""),
             publisher: String::from(""),
             release_date: i32::from(0),
-            platform: String::from(""),
         })
     }
 
@@ -349,7 +345,6 @@ impl Db {
                 title: row.get(1).unwrap_or_default(),
                 publisher: row.get(2).unwrap_or_default(),
                 release_date: row.get(3).unwrap_or_default(),
-                platform: row.get(4).unwrap_or_default(),
             })
         })?;
         let games = game_iter.collect::<Result<Vec<Game>>>()?;
@@ -475,7 +470,6 @@ impl Db {
                 title: row.get(1)?,
                 publisher: row.get(2)?,
                 release_date: row.get(3)?,
-                platform: row.get(4)?,
             })
         })?;
 

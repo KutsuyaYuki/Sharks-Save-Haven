@@ -1,6 +1,6 @@
 use std::{io::{self, Write}, path::{PathBuf, Path}, fs};
 
-use crate::{db::{self, Db}, filesystem};
+use crate::{db::{self, Db, Game}, filesystem};
 
 pub struct GameSaves<'a>{
     db: &'a db::Db,
@@ -157,65 +157,25 @@ impl<'a> GameSaves<'a>{
     /// * Failed to insert location information into the database
     /// * Failed to insert save information into the database
     /// * Failed to copy save files to backup folder
-    pub fn add_game_save(&self) {
-        // Get the game title from the user
-        print!("Enter the game title: ");
-        io::stdout().flush().unwrap();
-        let mut title = String::new();
-        io::stdin()
-            .read_line(&mut title)
-            .expect("Failed to read line");
-    
-        // Get the publisher from the user
-        print!("Enter the publisher: ");
-        io::stdout().flush().unwrap();
-        let mut publisher = String::new();
-        io::stdin()
-            .read_line(&mut publisher)
-            .expect("Failed to read line");
-    
-        // Get the release date from the user
-        print!("Enter the release date: ");
-        io::stdout().flush().unwrap();
-        let mut release_date = String::new();
-        io::stdin()
-            .read_line(&mut release_date)
-            .expect("Failed to read line");
-    
-        // Get the platform from the user
-        print!("Enter the platform: ");
-        io::stdout().flush().unwrap();
-        let mut platform = String::new();
-        io::stdin()
-            .read_line(&mut platform)
-            .expect("Failed to read line");
-    
-        // Get the save file location from the user
-        print!("Enter the save file location: ");
-        io::stdout().flush().unwrap();
-        let mut location = String::new();
-        io::stdin()
-            .read_line(&mut location)
-            .expect("Failed to read line");
-    
-        let game_id = self.db
-            .insert_game(title.trim(), publisher.trim(), release_date.trim())
-            .expect("Failed to insert game");
-        let platform_id = self.db
-            .insert_platform(platform.trim())
-            .expect("Failed to insert platform");
-        let location_id = self.db
-            .insert_location(&location.trim(), "")
-            .expect("Failed to insert location");
-        let save_id = self.db
-            .insert_save(game_id, location_id, "", platform_id)
-            .expect("Failed to insert save");
+    pub fn add_game_save(&self, game:db::Game, path: String, platform: String) {
+
+        let game_id = self.db.insert_game(game)
+        .expect("Failed to insert game");
     
         // Copy the save files to the backup folder
-        let save_file_location = PathBuf::from(&location.trim());
+    let platform_id = self.db
+        .insert_platform(platform.trim())
+        .expect("Failed to insert platform");
+    let location_id = self.db
+        .insert_location(path.trim(), "")
+        .expect("Failed to insert location");
+    let save_id = self.db
+        .insert_save(game_id, location_id, "", platform_id)
+        .expect("Failed to insert save");
         let backup_file_location =
             PathBuf::from(&format!("backups/{}/{}/{}/", game_id, platform_id, save_id));
     
+        let save_file_location = PathBuf::from(path);
         self.fs.copy_files(&save_file_location, &backup_file_location)
             .expect("Failed to copy files");
     }
