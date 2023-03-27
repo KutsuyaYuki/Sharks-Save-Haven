@@ -9,7 +9,7 @@ pub struct Game {
     pub id: i32,
     pub title: String,
     pub publisher: String,
-    pub release_date: i32,
+    pub release_date: i64,
 }
 
 pub struct Platform {
@@ -66,7 +66,7 @@ impl Db {
                 id INTEGER PRIMARY KEY,
                 title TEXT,
                 publisher TEXT,
-                release_date DATE
+                release_date INTEGER
             )",
             params![],
         )?;
@@ -268,7 +268,7 @@ impl Db {
             id: -1,
             title: String::from(""),
             publisher: String::from(""),
-            release_date: i32::from(0),
+            release_date: i64::from(0),
         })
     }
 
@@ -315,7 +315,7 @@ impl Db {
             id: -1,
             title: String::from(""),
             publisher: String::from(""),
-            release_date: i32::from(0),
+            release_date: i64::from(0),
         })
     }
 
