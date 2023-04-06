@@ -35,6 +35,7 @@ pub struct SharkGui {
     db: Box<db::Db>,
     fs: Box<filesystem::Filesystem>,
     add_game_window_open: bool,
+    edit_game_window_open: bool,
 }
 
 impl SharkGui {
@@ -52,11 +53,13 @@ impl SharkGui {
             db: Box::new(db),
             fs: Box::new(fs),
             add_game_window_open: false,
+            edit_game_window_open: false,
         }
     }
 
     fn load_windows(&mut self, ui: &mut egui::Ui) {
         self.load_add_game_window(ui);
+        self.load_edit_game_window(ui);
     }
 
     fn load_add_game_window(&mut self, ui: &mut egui::Ui) {
@@ -123,6 +126,70 @@ impl SharkGui {
             });
     }
 
+    fn load_edit_game_window(&mut self, ui: &mut egui::Ui) {
+        let game_save = GameSaves::new(self.db.as_ref(), self.fs.as_ref());
+
+        let default_pos = ui.available_rect_before_wrap().center();
+
+        egui::Window::new("Edit game")
+            .default_size(Vec2::new(400.0, 400.0))
+            .default_pos(Pos2::new(default_pos.x - 200.0, default_pos.y - 200.0))
+            .open(&mut self.edit_game_window_open)
+            .show(ui.ctx(), |ui| {
+                ui.set_min_width(200.0);
+                ui.label("Fill in to add game");
+                ui.vertical(|ui| {
+                    let mut new_game_state = NewGameState::load(ui.ctx()).unwrap_or_default();
+                    new_game_state.new_game.id = -1;
+
+                    ui.label("Title");
+                    ui.text_edit_singleline(&mut new_game_state.new_game.title);
+
+                    ui.label("Publisher");
+                    ui.text_edit_singleline(&mut new_game_state.new_game.publisher);
+                    ui.label("Platform");
+                    ui.text_edit_singleline(&mut new_game_state.platform_input);
+
+                    ui.label("Release Date (YYYYMMDD)");
+                    ui.add(egui_extras::DatePickerButton::new(
+                        &mut new_game_state.release_date_input,
+                    ));
+
+                    ui.vertical(|ui| {
+                        ui.label("Location");
+                        if ui.button("Open file…").clicked() {
+                            if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                                new_game_state.location_input =
+                                    path.display().to_string();
+                            }
+                        }
+
+                        ui.text_edit_singleline(&mut new_game_state.location_input);
+                    });
+
+                    ui.text_edit_singleline(&mut new_game_state.location_input);
+
+                    if ui.button("Finish").clicked() {
+                        new_game_state.new_game.release_date = new_game_state
+                            .release_date_input
+                            .and_hms_opt(0, 0, 0)
+                            .unwrap_or_default()
+                            .timestamp();
+
+                        game_save.add_game_save(
+                            new_game_state.new_game.clone(),
+                            new_game_state.location_input.clone(),
+                            new_game_state.platform_input.clone(),
+                        );
+                        ui.close_menu();
+                    }
+                    if ui.button("Cancel").clicked() {}
+
+                    new_game_state.store(ui.ctx());
+                })
+            });
+    }
+
     fn file_top_menu(ui: &mut egui::Ui) {
         if ui.button("Exit").clicked() {
             process::exit(0);
@@ -133,6 +200,12 @@ impl SharkGui {
         let add_button_response = ui.add(egui::Button::new("Add Game"));
         if add_button_response.clicked() {
             self.add_game_window_open = true;
+            ui.close_menu();
+        }
+        let edit_button_response = ui.add(egui::Button::new("Edit Game"));
+        if edit_button_response.clicked() {
+            let item = self.selected_item;
+            self.edit_game_window_open = true;
             ui.close_menu();
         }
     }
