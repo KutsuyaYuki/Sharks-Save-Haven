@@ -66,11 +66,12 @@ impl SharkGui {
         let game_save = GameSaves::new(self.db.as_ref(), self.fs.as_ref());
 
         let default_pos = ui.available_rect_before_wrap().center();
+        let mut add_game_window_open = self.add_game_window_open;
 
         egui::Window::new("Add game")
             .default_size(Vec2::new(400.0, 400.0))
             .default_pos(Pos2::new(default_pos.x - 200.0, default_pos.y - 200.0))
-            .open(&mut self.add_game_window_open)
+            .open(&mut add_game_window_open)
             .show(ui.ctx(), |ui| {
                 ui.set_min_width(200.0);
                 ui.label("Fill in to add game");
@@ -119,11 +120,14 @@ impl SharkGui {
                         );
                         ui.close_menu();
                     }
-                    if ui.button("Cancel").clicked() {}
+                    if ui.button("Cancel").clicked() {
+                        self.add_game_window_open = false;
+                    }
 
                     new_game_state.store(ui.ctx());
                 })
             });
+        self.add_game_window_open &= add_game_window_open;
     }
 
     fn load_edit_game_window(&mut self, ui: &mut egui::Ui) {

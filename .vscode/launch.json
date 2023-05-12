@@ -1,13 +1,20 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug Rust",
-            "cargo": {
-              "args": ["build", "--manifest-path", "${fileDirname}/../Cargo.toml"]
-            }
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Rust Application (Debug)",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--package", "sharks_save_haven", "--bin", "sharks_save_haven"]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"],
+      "env": {},
+      "sourceMap": {
+        "/rustc/": "${workspaceFolder}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust"
+      }
+    }
+  ]
 }
