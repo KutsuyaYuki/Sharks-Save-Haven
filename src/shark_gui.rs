@@ -1,6 +1,6 @@
 use std::process;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Local, Datelike};
 use egui::{Context, Id, Pos2, Vec2};
 
 use crate::{
@@ -21,11 +21,22 @@ struct NewGameState {
 
 impl NewGameState {
     pub fn load(ctx: &Context) -> Option<Self> {
-        ctx.data_mut(|d| d.get_temp(Id::null()))
+        ctx.data_mut(|d| d.get_temp(Id::null())).unwrap_or(Some(NewGameState::new()))
     }
 
     fn store(self, ctx: &Context) {
         ctx.data_mut(|d| d.insert_temp(Id::null(), self));
+    }
+
+    pub fn new() -> Self {
+        let today = Local::now();
+        
+        Self{
+            new_game: Game::default(),
+            release_date_input: NaiveDate::from_ymd(today.year(), today.month(), today.day()),
+            platform_input: String::new(),
+            location_input: String::new(),
+        }
     }
 }
 
@@ -135,10 +146,12 @@ impl SharkGui {
 
         let default_pos = ui.available_rect_before_wrap().center();
 
+        let mut edit_game_window_open = self.edit_game_window_open;
+
         egui::Window::new("Edit game")
             .default_size(Vec2::new(400.0, 400.0))
             .default_pos(Pos2::new(default_pos.x - 200.0, default_pos.y - 200.0))
-            .open(&mut self.edit_game_window_open)
+            .open(&mut edit_game_window_open)
             .show(ui.ctx(), |ui| {
                 ui.set_min_width(200.0);
                 ui.label("Fill in to add game");
@@ -187,11 +200,14 @@ impl SharkGui {
                         );
                         ui.close_menu();
                     }
-                    if ui.button("Cancel").clicked() {}
+                    if ui.button("Cancel").clicked() {
+                        self.edit_game_window_open = false;
+                    }
 
                     new_game_state.store(ui.ctx());
                 })
             });
+        self.edit_game_window_open &= edit_game_window_open;
     }
 
     fn file_top_menu(ui: &mut egui::Ui) {
