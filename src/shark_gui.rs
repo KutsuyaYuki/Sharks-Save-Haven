@@ -1,6 +1,6 @@
-use std::process;
+use std::{io::empty, process};
 
-use chrono::{NaiveDate, Local, Datelike};
+use chrono::{Datelike, Local, NaiveDate};
 use egui::{Context, Id, Pos2, Vec2};
 
 use crate::{
@@ -21,7 +21,8 @@ struct NewGameState {
 
 impl NewGameState {
     pub fn load(ctx: &Context) -> Option<Self> {
-        ctx.data_mut(|d| d.get_temp(Id::null())).unwrap_or(Some(NewGameState::new()))
+        ctx.data_mut(|d| d.get_temp(Id::null()))
+            .unwrap_or(Some(NewGameState::new()))
     }
 
     fn store(self, ctx: &Context) {
@@ -30,8 +31,8 @@ impl NewGameState {
 
     pub fn new() -> Self {
         let today = Local::now();
-        
-        Self{
+
+        Self {
             new_game: Game::default(),
             release_date_input: NaiveDate::from_ymd(today.year(), today.month(), today.day()),
             platform_input: String::new(),
@@ -47,6 +48,7 @@ pub struct SharkGui {
     fs: Box<filesystem::Filesystem>,
     add_game_window_open: bool,
     edit_game_window_open: bool,
+    remove_game_window_open: bool,
 }
 
 impl SharkGui {
@@ -65,12 +67,14 @@ impl SharkGui {
             fs: Box::new(fs),
             add_game_window_open: false,
             edit_game_window_open: false,
+            remove_game_window_open: false,
         }
     }
 
     fn load_windows(&mut self, ui: &mut egui::Ui) {
         self.load_add_game_window(ui);
         self.load_edit_game_window(ui);
+        self.load_remove_game_window(ui);
     }
 
     fn load_add_game_window(&mut self, ui: &mut egui::Ui) {
@@ -107,8 +111,7 @@ impl SharkGui {
                         ui.label("Location");
                         if ui.button("Open file…").clicked() {
                             if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                                new_game_state.location_input =
-                                    path.display().to_string();
+                                new_game_state.location_input = path.display().to_string();
                             }
                         }
 
@@ -176,8 +179,7 @@ impl SharkGui {
                         ui.label("Location");
                         if ui.button("Open file…").clicked() {
                             if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                                new_game_state.location_input =
-                                    path.display().to_string();
+                                new_game_state.location_input = path.display().to_string();
                             }
                         }
 
@@ -210,6 +212,43 @@ impl SharkGui {
         self.edit_game_window_open &= edit_game_window_open;
     }
 
+    fn load_remove_game_window(&mut self, ui: &mut egui::Ui) {
+        let selected_item = self.selected_item; // Store the selected item in a local variable
+    
+        if selected_item.is_none() {
+            return; // Return early if no item is selected
+        }
+    
+        let game_save = GameSaves::new(self.db.as_ref(), self.fs.as_ref());
+        
+        let title = game_save.get_game_title_by_id(self.items[selected_item.unwrap()].clone().id);
+    
+        let default_pos = ui.available_rect_before_wrap().center();
+    
+        let mut remove_game_window_open = self.remove_game_window_open;
+    
+        egui::Window::new("Remove game")
+            .default_size(Vec2::new(400.0, 400.0))
+            .default_pos(Pos2::new(default_pos.x - 200.0, default_pos.y - 200.0))
+            .open(&mut remove_game_window_open)
+            .show(ui.ctx(), |ui| {
+                ui.label(format!("Are you sure you want to remove \"{}\"", title));
+                ui.horizontal(|ui| {
+                    if ui.button("Yes").clicked() {
+                        // Add your code here to handle the removal of the selected game
+                        ui.close_menu();
+                    }
+    
+                    if ui.button("No").clicked() {
+                        self.remove_game_window_open = false;
+                    }
+                });
+            });
+    
+        self.remove_game_window_open &= remove_game_window_open;
+    }
+    
+
     fn file_top_menu(ui: &mut egui::Ui) {
         if ui.button("Exit").clicked() {
             process::exit(0);
@@ -224,11 +263,18 @@ impl SharkGui {
         }
         let edit_button_response = ui.add(egui::Button::new("Edit Game"));
         if edit_button_response.clicked() {
-            let item = self.selected_item;
-            self.edit_game_window_open = true;
+            if self.selected_item.is_some() {
+                self.edit_game_window_open = true;
+                ui.close_menu();
+            }
+        }
+        let remove_button_response = ui.add(egui::Button::new("Remove Game"));
+        if remove_button_response.clicked() && self.selected_item.is_some() {
+            self.remove_game_window_open = true;
             ui.close_menu();
         }
     }
+    
 
     fn table_ui(&mut self, ui: &mut egui::Ui) {
         let table = TableBuilder::new(ui)

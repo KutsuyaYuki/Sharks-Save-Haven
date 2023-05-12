@@ -12,6 +12,12 @@ impl<'a> GameSaves<'a>{
         Self{db, fs}
     }
 
+    /// get game title by id
+    pub fn get_game_title_by_id(&self, game_id: i32) -> String {
+        let game = self.db.get_game(game_id).expect("Failed to get game");
+        game.title
+    }
+
     pub fn remove_game_save(&self, game_id: i32) {    
     
             // Check if the game exists in the database
